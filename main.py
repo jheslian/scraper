@@ -11,8 +11,9 @@ def html_parser(url):
    return soup
 
 def get_book_info(book_url):
+   print(book_url)
    # book information
-   html_book_content = html_parser(book_url)  
+   html_book_content = html_parser(book_url)
    info = product_info(html_book_content)
 
    book_info = {
@@ -34,11 +35,14 @@ def get_book_info(book_url):
       'category' : get_book_category(html_book_content),
       # 9. review_rating - class="star-rating One”
       'review_rating' : get_rating(html_book_content),
-      # 10. image_url 
+      # 10. image_url
       'image_url' : get_book_url_image(book_url, html_book_content)
    }
+
+   
    if book_info:
-      return json.dumps(book_info, sort_keys=False, indent=4)
+      #return json.dumps(book_info, sort_keys=False, indent=4)
+      return book_info
    return False
 
 def get_stock_number(content):
@@ -48,11 +52,11 @@ def get_stock_number(content):
 
 def product_info(html_book_content):
    # get product information: UPC, prices, stock availability
-   content = html_book_content.findAll('tr')   
+   content = html_book_content.findAll('tr')
    info = {}
    for i in content:
-      info[i.findChildren()[0].text] = i.findChildren()[1].text 
-   
+      info[i.findChildren()[0].text] = i.findChildren()[1].text
+
    return info
 
 def get_rating(html_book_content):
@@ -94,11 +98,11 @@ def get_book_url_image(book_url, html_book_content):
    # image url
    url_image = html_book_content.find('img', class_=False, id=False)
    if url_image.has_attr('src'):
-      filename = re.search(r'/([\w_-]+[.](jpg|gif|png))$', url_image['src'])     
+      filename = re.search(r'/([\w_-]+[.](jpg|gif|png))$', url_image['src'])
       if filename and 'http' not in url_image['src']:
          # modify image url
          img = url_image['src'][6:]
-         url = '{}{}'.format(book_url, img)   
+         url = '{}{}'.format(book_url, img)
          return url
       else:
          # if image extension doesn't exist
@@ -106,16 +110,73 @@ def get_book_url_image(book_url, html_book_content):
          return False
 
 
-def get_book_url(content):
+# def get_book_url(website_url, main_html):
+#    # return book full url
+#    content = main_html.find('div', class_='image_container')
+#    get_link = content.find('a')['href']
+#    if 'http' not in get_link:
+#       url = '{}{}'.format(website_url, get_link)
+#       return url
+#    return False
+
+def get_all_books_url(website_url, category_url):
+   html = html_parser(category_url)
+   category_tmp = category_url[:36]
+
    # return book full url
-   content = main_html.find('div', class_='image_container')
-   get_link = content.find('a')['href']
-   if 'http' not in get_link:
-      url = '{}{}'.format(website_url, get_link)
-      return url
-   return False
+   content = html.findAll('ol', class_='row')
+   temp_links = []
+   for div in content:
+      # product container
+      divs = div.findAll('div', class_='image_container')
+      for a in divs:
+         # get book links
+         hlinks = a.findAll('a', href= True)
+         for link in hlinks:
+            temp_links.append(link['href'])
 
+   links = []
+   for link in temp_links:
+      # modifies the links since url isn't complete
+      if 'http' not in link:
+         tmp_url = link[8:]
+         book_url = '{}{}'.format(category_tmp ,tmp_url)
+         links.append(book_url)
+  
+   return links
+   
 
+def get_category_url(website_url, main_html):
+   content = main_html.find('ul', class_='nav-list')
+   get_link = content.findAll('a')
+   links = []
+   for link in get_link:
+      if 'http' not in link:
+         url = '{}{}'.format(website_url, link['href'])
+         links.append(url)
+   return links
+
+import csv
+def save_csv(book):
+   # create csv file with book data
+   header = [
+      'product_page_url',
+      'universal_product_code',
+      'title',
+      'price_including_tax',
+      'price_excluding_tax',
+      'number_available',
+      'product_description',
+      'category',
+      'review_rating',
+      'image_url'
+   ]
+   # save information to csv file
+   with open('misc/csv/%s.csv'% book['category'], 'a', newline='') as output_file:
+      writer = csv.DictWriter(output_file, fieldnames=header)
+      writer.writeheader()
+      writer.writerow(book)
+   
 # ================================      main    ================================ #
 
 website_url = 'https://books.toscrape.com/'
@@ -124,5 +185,15 @@ website_url = 'https://books.toscrape.com/'
 main_html = html_parser(website_url)
 
 #book url
-book_url = get_book_url(website_url)
-print('Book Information : ',get_book_info(book_url))
+#book_url = get_book_url(website_url, main_html)
+#print('Book Information : ',get_book_info(book_url))
+
+
+category_url = get_category_url(website_url, main_html)
+#print('CAT', category_url)
+books_link = get_all_books_url(website_url,category_url[2])
+#print(get_book_info(books_link[2]))
+for book in  books_link:
+   data = get_book_info(book)
+   save_csv(data)
+
