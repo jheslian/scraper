@@ -1,3 +1,4 @@
+import os
 import re
 from bs4 import BeautifulSoup as bs
 import requests
@@ -14,7 +15,7 @@ def get_book_info(book_url):
    print(book_url)
    # book information
    html_book_content = html_parser(book_url)
-   download_book_image(book_url, html_book_content)
+   #download_book_image(book_url, html_book_content)
    info = product_info(html_book_content)
    book_info = {
       # 1. product page url
@@ -174,10 +175,17 @@ def save_csv(book):
       'image_url'
    ]
    # save information to csv file
-   with open('misc/csv/%s.csv'% book['category'], 'a', newline='') as output_file:
-      writer = csv.DictWriter(output_file, fieldnames=header)
-      writer.writeheader()
-      writer.writerow(book)
+   filename = 'misc/csv/%s.csv' % book['category']
+
+   if os.path.isfile(filename):
+      with open(filename, 'a', newline='') as output_file:
+         writer = csv.DictWriter(output_file, fieldnames=header)
+         writer.writerow(book)
+   else: 
+      with open(filename, 'w') as output_file:
+         writer = csv.DictWriter(output_file, fieldnames=header)
+         writer.writeheader()
+         writer.writerow(book)      
 
 
 def download_book_image(website_url, content):
@@ -215,4 +223,3 @@ for category in category_url[1:]:
    for book in  books_link:
       data = get_book_info(book)
       save_csv(data)
-
