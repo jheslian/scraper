@@ -38,7 +38,6 @@ def get_book_info(book_url):
       # 10. image_url
       'image_url' : get_book_url_image(book_url, html_book_content)
    }
-
    
    if book_info:
       #return json.dumps(book_info, sort_keys=False, indent=4)
@@ -56,7 +55,6 @@ def product_info(html_book_content):
    info = {}
    for i in content:
       info[i.findChildren()[0].text] = i.findChildren()[1].text
-
    return info
 
 def get_rating(html_book_content):
@@ -78,7 +76,10 @@ def get_rating(html_book_content):
 def get_book_description(html_book_content):
    # book description
    description = html_book_content.find('p', class_=False, id=False)
-   return description.string
+   if description:
+      return description.string
+   else: 
+      return False   
 
 
 def get_book_title(html_book_content):
@@ -90,9 +91,11 @@ def get_book_title(html_book_content):
 def get_book_category(html_book_content):
    # book category
    category = html_book_content.find('ul', class_='breadcrumb')
-   a = category.findChildren()[4]
-   return a.text.strip()
-
+   content = category.findChildren()[4]
+   if content:
+      return content.text.strip()
+   else:
+      return False
 
 def get_book_url_image(book_url, html_book_content):
    # image url
