@@ -176,6 +176,28 @@ def save_csv(book):
       writer = csv.DictWriter(output_file, fieldnames=header)
       writer.writeheader()
       writer.writerow(book)
+
+
+def download_book_image(website_url, content):
+   # download book image
+   url_image = content.find('img', class_=False, id=False)
+   if url_image.has_attr('src'):
+      filename = re.search(r'/([\w_-]+[.](jpg|gif|png))$', url_image['src'])
+      if not filename:
+         # if image extension doesn't exist download image won't proceed
+         print("Error filename: {}".format(url_image['src']))
+         return False
+
+      # download image to misc/images/
+      with open('misc/images/'+ str(filename.group(1)), 'wb') as f:
+         if 'http' not in url_image['src']:
+               img = url_image['src'][6:]
+               url = '{}{}'.format(website_url, img)
+               response = requests.get(url)
+               return f.write(response.content)
+
+         response = requests.get(url_image['src'])
+         return f.write(response.content)      
    
 # ================================      main    ================================ #
 
@@ -190,10 +212,9 @@ main_html = html_parser(website_url)
 
 
 category_url = get_category_url(website_url, main_html)
-#print('CAT', category_url)
-books_link = get_all_books_url(website_url,category_url[2])
-#print(get_book_info(books_link[2]))
-for book in  books_link:
-   data = get_book_info(book)
-   save_csv(data)
+for category in category_url[1:]:
+   books_link = get_all_books_url(website_url,category)
+   for book in  books_link:
+      data = get_book_info(book)
+      save_csv(data)
 
