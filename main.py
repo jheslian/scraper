@@ -14,8 +14,8 @@ def get_book_info(book_url):
    print(book_url)
    # book information
    html_book_content = html_parser(book_url)
+   download_book_image(book_url, html_book_content)
    info = product_info(html_book_content)
-
    book_info = {
       # 1. product page url
       'product_page_url' : book_url,
@@ -38,10 +38,9 @@ def get_book_info(book_url):
       # 10. image_url
       'image_url' : get_book_url_image(book_url, html_book_content)
    }
-   
+
    if book_info:
-      #return json.dumps(book_info, sort_keys=False, indent=4)
-      return book_info
+      return book_info   
    return False
 
 def get_stock_number(content):
@@ -202,17 +201,13 @@ def download_book_image(website_url, content):
          response = requests.get(url_image['src'])
          return f.write(response.content)      
    
+   return False
 # ================================      main    ================================ #
-
+"""
+book information extraction on each category present
+"""
 website_url = 'https://books.toscrape.com/'
-
-# parse content to html
 main_html = html_parser(website_url)
-
-#book url
-#book_url = get_book_url(website_url, main_html)
-#print('Book Information : ',get_book_info(book_url))
-
 
 category_url = get_category_url(website_url, main_html)
 for category in category_url[1:]:
