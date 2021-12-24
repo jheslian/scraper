@@ -2,7 +2,6 @@ import os
 import re
 from bs4 import BeautifulSoup as bs
 import requests
-import json
 
 def html_parser(url):
    # parse url to html
@@ -12,10 +11,9 @@ def html_parser(url):
    return soup
 
 def get_book_info(book_url):
-   print(book_url)
-   # book information
+   # book information and download book image
    html_book_content = html_parser(book_url)
-   #download_book_image(book_url, html_book_content)
+   download_book_image(book_url, html_book_content)
    info = product_info(html_book_content)
    book_info = {
       # 1. product page url
@@ -121,12 +119,29 @@ def get_book_url_image(book_url, html_book_content):
 #       url = '{}{}'.format(website_url, get_link)
 #       return url
 #    return False
+def get_next_page(url):
+   # retrieve all url of all pages existing
+   tmp = url[:-10]
+   category_url = [url] 
+   while True:
+      html = html_parser(category_url[-1])
+      next_page = html.find('li', class_='next')
+      if next_page:
+         link = next_page.find('a')
+         working_url = requests.get('{}{}'.format(tmp, link['href']))
+         if working_url.status_code == 200:  
+            category_url.append('{}{}'.format(tmp, link['href']))
+         else:
+            break   
+      else:
+         break   
 
-def get_all_books_url(website_url, category_url):
-   html = html_parser(category_url)
-   category_tmp = category_url[:36]
+   return category_url
 
-   # return book full url
+
+def get_tmp_books_urls(url):
+   # return all value foun in href in each books
+   html = html_parser(url)
    content = html.findAll('ol', class_='row')
    temp_links = []
    for div in content:
@@ -138,6 +153,23 @@ def get_all_books_url(website_url, category_url):
          for link in hlinks:
             temp_links.append(link['href'])
 
+   return temp_links
+
+def get_all_books_url(category_url):
+   
+   # https://books.toscrape.com/catalogue
+   category_tmp = category_url[:36]
+
+   temp_links = []
+   # If next page 
+   next_page_urls = get_next_page(category_url)
+   if next_page_urls:
+      for url in next_page_urls:
+         temp_links.extend(get_tmp_books_urls(url))
+   else:
+      get_tmp_books_urls(category_url)
+
+   # working urls
    links = []
    for link in temp_links:
       # modifies the links since url isn't complete
@@ -214,12 +246,16 @@ def download_book_image(website_url, content):
 """
 book information extraction on each category present
 """
-website_url = 'https://books.toscrape.com/'
-main_html = html_parser(website_url)
-
-category_url = get_category_url(website_url, main_html)
-for category in category_url[1:]:
-   books_link = get_all_books_url(website_url,category)
-   for book in  books_link:
-      data = get_book_info(book)
-      save_csv(data)
+try:
+   website_url = 'https://books.toscrape.com/'
+   main_html = html_parser(website_url)
+   category_url = get_category_url(website_url, main_html)
+   for category in category_url[1:]:
+      books_link = get_all_books_url(category)
+      for book_url in  books_link:
+         print('data collection : ', book_url)
+         data = get_book_info(book_url)
+         save_csv(data)       
+   print('collection of data and download image was successfull')      
+except:
+   print('Unexpected error!')  
