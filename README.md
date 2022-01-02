@@ -19,9 +19,9 @@ An application to retrieve the following data at the time of execution:
  1. Clone the repository https://github.com/jheslian/scraper.git on the terminal or command prompt
  2. Create a virtual environment with "venv"  
 	 - cd scaper :  to access the folder 
-	 - python -m venv <environment name> : to create the virtual environment
+	 - python -m venv ***environment name*** : to create the virtual environment - exemple: "python -m venv env" 
 3. Activate the virtual environment:
-	- source <environment name>/bin/activate 
+	- source ***environment name***/bin/activate - ex : "source env/bin/activate" if "env" is used as environment name 
 4. Run the program with : python3 main.py
 
 ***Without any connection problem at the end of the program you should have:***
