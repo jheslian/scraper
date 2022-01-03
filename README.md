@@ -21,7 +21,10 @@ An application to retrieve the following data at the time of execution:
 	 - cd scaper :  to access the folder 
 	 - python -m venv ***environment name*** : to create the virtual environment - exemple: "python -m venv env" 
 3. Activate the virtual environment:
+	for unix or macos:
 	- source ***environment name***/bin/activate - ex : "source env/bin/activate" if "env" is used as environment name 
+	for windows:
+	- ***environment name***\Scripts\activate.bat - ex: "env\Scripts\activate.bat"
 4. Run the program with : python3 main.py
 
 ***Without any connection problem at the end of the program you should have:***
