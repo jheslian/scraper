@@ -25,7 +25,8 @@ An application to retrieve the following data at the time of execution:
 	- source ***environment name***/bin/activate - ex : "source env/bin/activate" if "env" is used as environment name 
 	for windows:
 	- ***environment name***\Scripts\activate.bat - ex: "env\Scripts\activate.bat"
-4. Run the program with : python3 main.py
+4. Install the packages with pip: pip install -r requirements.txt	
+6. Run the program with : python3 main.py
 
 ***Without any connection problem at the end of the program you should have:***
 
