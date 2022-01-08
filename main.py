@@ -29,6 +29,7 @@ def html_parser(url):
 
 def get_book_info(book_url):
    # book information and download book image
+   print('Sraping url : ', book_url)
    html_book_content = html_parser(book_url)
    download_book_image(get_book_url_image(book_url, html_book_content))
    info = product_info(html_book_content)
