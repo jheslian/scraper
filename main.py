@@ -2,18 +2,35 @@ import os
 import re
 from bs4 import BeautifulSoup as bs
 import requests
+from queue import Queue
+import threading
+import time
+import concurrent.futures
+
+exitFlag = 0
+no_threads = 50
+threadlist=[]
+
+for t in range(1, no_threads):
+   threadlist.append(t)
+
+queueLock = threading.Lock()
+workQueue = Queue(100)
+threads = []
+threadID = 1
+   
 
 def html_parser(url):
    # parse url to html
    # param: url - website url to scrape
-   response = requests.get(url).content
-   soup = bs(response, 'html.parser')
+   response = requests.get(url)
+   soup = bs(response.content, 'html.parser')
    return soup
 
 def get_book_info(book_url):
    # book information and download book image
    html_book_content = html_parser(book_url)
-   download_book_image(book_url, html_book_content)
+   download_book_image(get_book_url_image(book_url, html_book_content))
    info = product_info(html_book_content)
    book_info = {
       # 1. product page url
@@ -103,8 +120,8 @@ def get_book_url_image(book_url, html_book_content):
       if filename and 'http' not in url_image['src']:
          # modify image url
          img = url_image['src'][6:]
-         url = '{}{}'.format(book_url, img)
-         return url
+         url = '{}{}'.format(book_url[:27], img)
+         return str(url)
       else:
          # if image extension doesn't exist
          print("Error filename: {}".format(url_image['src']))
@@ -220,31 +237,32 @@ def save_csv(book):
          writer.writerow(book)      
 
 
-def download_book_image(website_url, content):
-   # download book image
-   url_image = content.find('img', class_=False, id=False)
-   if url_image.has_attr('src'):
-      filename = re.search(r'/([\w_-]+[.](jpg|gif|png))$', url_image['src'])
-      if not filename:
-         # if image extension doesn't exist download image won't proceed
-         print("Error filename: {}".format(url_image['src']))
-         return False
+def download_book_image(book_image_url):  
+   # download image to misc/images/
+   # get image file name
+   img = str(book_image_url[45:]) 
+   with open('misc/images/'+ str(img), 'wb') as f:
+      response = requests.get(book_image_url)
+      return f.write(response.content)
 
-      # download image to misc/images/
-      with open('misc/images/'+ str(filename.group(1)), 'wb') as f:
-         if 'http' not in url_image['src']:
-               img = url_image['src'][6:]
-               url = '{}{}'.format(website_url, img)
-               response = requests.get(url)
-               return f.write(response.content)
-
-         response = requests.get(url_image['src'])
-         return f.write(response.content)      
-   
-   return False
 # ================================      main    ================================ #
 """
 book information extraction on each category present
+"""
+
+"""
+create misc folder with 2 sub folder:
+1. csv folder - which will contain csv files for the scrape data
+2. images folder - which contains images of each book
+"""
+import os
+folders = ['misc', "misc/csv", "misc/images"]
+for folder in folders:
+   if not os.path.exists(folder):
+      os.mkdir(folder)
+   
+
+################################### version 1 : 20 min ###################################
 """
 try:
    website_url = 'https://books.toscrape.com/'
@@ -259,3 +277,104 @@ try:
    print('collection of data and download image was successfull')      
 except:
    print('Unexpected error!')  
+"""
+
+################################### version 2 : 5 min ###################################
+"""
+categories =[]
+
+try:
+   website_url = 'https://books.toscrape.com/'
+   main_html = html_parser(website_url)
+   category_url = get_category_url(website_url, main_html)
+   
+   for url in category_url[1:]:
+      categories.append(url)
+
+   print('Collection of data and download image was successfull')      
+except:
+   print('Unexpected error!')  
+
+class myThread (threading.Thread):
+   def __init__(self, threadID, name, q):
+      threading.Thread.__init__(self)
+      self.threadID = threadID
+      self.name = name
+      self.q = q
+   def run(self):
+      print("Starting " + self.name)
+      process_data(self.name, self.q)
+      print("Exiting " + self.name)
+
+def process_data(q):
+   while not exitFlag:
+      queueLock.acquire()
+      if not workQueue.empty():
+         data = q.get()
+         queueLock.release()
+         books_link = get_all_books_url(data)
+         for book_url in  books_link:
+            print('data collection : ', book_url)
+            try:
+               data = get_book_info(book_url)
+               save_csv(data) 
+            except:
+               print("erreur")   
+      else:
+         queueLock.release()
+      time.sleep(1)
+
+
+# Create new threads
+tic = time.perf_counter() # Start Time
+for tName in threadlist:
+   thread = myThread(threadID, tName, workQueue)
+   thread.start()
+   threads.append(thread)
+   threadID += 1
+
+# Fill the queue
+queueLock.acquire()
+for word in categories:
+   workQueue.put(word)
+queueLock.release()
+
+# Wait for queue to empty
+while not workQueue.empty():
+   pass
+
+# Notify threads it's time to exit
+exitFlag = 1
+
+# Wait for all threads to complete
+for t in threads:
+   t.join()
+
+toc = time.perf_counter() # End Time 
+print(f"Build finished in {(toc - tic)/60:0.0f} minutes {(toc - tic)%60:0.0f} seconds")   
+
+"""
+
+################################### version 3 : 3 min ###################################
+
+def scrape(category_url): 
+   books_link = get_all_books_url(category_url)
+   for book_url in  books_link:
+      try:
+         data = get_book_info(book_url)
+         save_csv(data) 
+      except Exception as e:
+         print(f"Error has occur on this url: {book_url}")
+
+tic = time.perf_counter() # Start Time
+try:
+   website_url = 'https://books.toscrape.com/'
+   main_html = html_parser(website_url)
+   category_url = get_category_url(website_url, main_html)
+   with concurrent.futures.ThreadPoolExecutor() as executor:
+      executor.map(scrape, category_url[1:])
+   print('Collection of data and download image was successfull')      
+except:
+   print('Unexpected error!')  
+toc = time.perf_counter() # End Time 
+print(f"Build finished in {(toc - tic)/60:0.0f} minutes {(toc - tic)%60:0.0f} seconds")
